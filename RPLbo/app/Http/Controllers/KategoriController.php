@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Kategori;
@@ -35,7 +35,7 @@ class KategoriController extends Controller
             $user = $request->user();
             
             // Hanya AdminGudang yang bisa menambah kategori
-            if ($user->role !== 'AdminGudang') {
+            if (!$user->hasRole('AdminGudang')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Hanya Admin Gudang yang dapat menambah kategori'
@@ -79,7 +79,7 @@ class KategoriController extends Controller
             $user = $request->user();
             
             // Hanya AdminGudang yang bisa mengubah kategori
-            if ($user->role !== 'AdminGudang') {
+            if (!$user->hasRole('AdminGudang')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Hanya Admin Gudang yang dapat mengubah kategori'
@@ -130,7 +130,7 @@ class KategoriController extends Controller
             $user = $request->user();
             
             // Hanya AdminGudang yang bisa menghapus kategori
-            if ($user->role !== 'AdminGudang') {
+            if (!$user->hasRole('AdminGudang')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Hanya Admin Gudang yang dapat menghapus kategori'

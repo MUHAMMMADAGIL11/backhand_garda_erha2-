@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Notifikasi;
@@ -39,7 +39,7 @@ class NotifikasiController extends Controller
             $user = $request->user();
             
             // Hanya AdminGudang yang bisa mengirim notifikasi
-            if ($user->role !== 'AdminGudang') {
+            if (!$user->hasRole('AdminGudang')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Hanya Admin Gudang yang dapat mengirim notifikasi'

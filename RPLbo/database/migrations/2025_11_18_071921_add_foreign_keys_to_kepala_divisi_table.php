@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('notifikasi', function (Blueprint $table) {
-            $table->foreign(['id_user'], 'notifikasi_id_user_fkey')->references(['id_user'])->on('users')->onUpdate('no action')->onDelete('no action');
+        Schema::table('kepala_divisi', function (Blueprint $table) {
+            $table->foreign(['id_user'], 'kepala_divisi_id_user_fkey')->references(['id_user'])->on('users')->onUpdate('no action')->onDelete('cascade');
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('notifikasi', function (Blueprint $table) {
-            $table->dropForeign('notifikasi_id_user_fkey');
+        Schema::table('kepala_divisi', function (Blueprint $table) {
+            $table->dropForeign('kepala_divisi_id_user_fkey');
         });
     }
 };

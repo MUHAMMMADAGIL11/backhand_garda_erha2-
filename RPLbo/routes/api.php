@@ -2,15 +2,15 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\NotifikasiController;
-use App\Http\Controllers\Api\LogAktivitasController;
-use App\Http\Controllers\Api\BarangController;
-use App\Http\Controllers\Api\KategoriController;
-use App\Http\Controllers\Api\PermintaanBarangController;
-use App\Http\Controllers\Api\TransaksiMasukController;
-use App\Http\Controllers\Api\TransaksiKeluarController;
-use App\Http\Controllers\Api\LaporanController;
+use App\Http\Controllers\NotifikasiController;
+use App\Http\Controllers\LogAktivitasController;
+use App\Http\Controllers\BarangController;
+use App\Http\Controllers\KategoriController;
+use App\Http\Controllers\PermintaanBarangController;
+use App\Http\Controllers\TransaksiMasukController;
+use App\Http\Controllers\TransaksiKeluarController;
+use App\Http\Controllers\LaporanController;
+use App\Http\Controllers\UserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,24 +23,16 @@ use App\Http\Controllers\Api\LaporanController;
 Route::group([
     'prefix' => 'auth' 
 ], function ($router) {
-    // Endpoint Register
-    Route::post('register', [AuthController::class, 'register']);
+    Route::post('register', [UserController::class, 'register']);
     
     // Endpoint Login
-    Route::post('login', [AuthController::class, 'login']);
-
-    // Endpoint get current user
-    Route::get('me', [AuthController::class, 'me'])->middleware(['jwt.cookie', 'auth:api']);
-
-    // Endpoint Profile
-    Route::get('profile', [AuthController::class, 'profile'])->middleware(['jwt.cookie', 'auth:api']);
-
-    // Endpoint Logout
-    Route::post('logout', [AuthController::class, 'logout'])->middleware(['jwt.cookie', 'auth:api']);
+    Route::post('login', [UserController::class, 'login']);
 });
 
 // ROUTE NOTIFIKASI
-Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
+Route::middleware(['jwt.cookie','auth:api'])->group(function () {
+    Route::post('logout', [UserController::class, 'logout']);
+
     Route::get('notifikasi', [NotifikasiController::class, 'index']);
     Route::post('notifikasi', [NotifikasiController::class, 'store']);
     Route::patch('notifikasi/{id}/read', [NotifikasiController::class, 'markAsRead']);
@@ -49,8 +41,9 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
 
 // ROUTE LOG AKTIVITAS
 Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
-    Route::get('logs', [LogAktivitasController::class, 'index']);
-    Route::get('logs/user/{id}', [LogAktivitasController::class, 'getUserLogs']);
+    Route::get('logaktivitas', [LogAktivitasController::class, 'index']);
+    Route::post('logaktivitas', [LogAktivitasController::class, 'store']);
+    Route::get('logaktivitas/user/{id}', [LogAktivitasController::class, 'getUserLogs']);
 });
 
 // ROUTE BARANG
@@ -74,23 +67,26 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
 
 // ROUTE PERMINTAAN BARANG
 Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
-    Route::get('permintaan', [PermintaanBarangController::class, 'index']);
-    Route::get('permintaan/{id}', [PermintaanBarangController::class, 'show']);
-    Route::post('permintaan', [PermintaanBarangController::class, 'store']);
-    Route::patch('permintaan/{id}/approve', [PermintaanBarangController::class, 'approve']);
-    Route::patch('permintaan/{id}/reject', [PermintaanBarangController::class, 'reject']);
+    Route::get('permintaan-barang', [PermintaanBarangController::class, 'index']);
+    Route::get('permintaan-barang/{id}', [PermintaanBarangController::class, 'show']);
+    Route::post('permintaan-barang', [PermintaanBarangController::class, 'store']);
+    Route::put('permintaan-barang/{id}', [PermintaanBarangController::class, 'update']);
+    Route::patch('permintaan-barang/{id}/approve', [PermintaanBarangController::class, 'approve']);
+    Route::patch('permintaan-barang/{id}/reject', [PermintaanBarangController::class, 'reject']);
 });
 
 // ROUTE TRANSAKSI MASUK
 Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
-    Route::get('transaksi-masuk', [TransaksiMasukController::class, 'index']);
-    Route::post('transaksi-masuk', [TransaksiMasukController::class, 'store']);
+    Route::get('transaksi/masuk', [TransaksiMasukController::class, 'index']);
+    Route::post('transaksi/masuk', [TransaksiMasukController::class, 'store']);
+    Route::put('transaksi/masuk/{id}', [TransaksiMasukController::class, 'update']);
 });
 
 // ROUTE TRANSAKSI KELUAR
 Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
-    Route::get('transaksi-keluar', [TransaksiKeluarController::class, 'index']);
-    Route::post('transaksi-keluar', [TransaksiKeluarController::class, 'store']);
+    Route::get('transaksi/keluar', [TransaksiKeluarController::class, 'index']);
+    Route::post('transaksi/keluar', [TransaksiKeluarController::class, 'store']);
+    Route::put('transaksi/keluar/{id}', [TransaksiKeluarController::class, 'update']);
 });
 
 // ROUTE LAPORAN
@@ -98,11 +94,67 @@ Route::middleware(['jwt.cookie', 'auth:api'])->group(function () {
     Route::get('laporan', [LaporanController::class, 'index']);
     Route::get('laporan/{id}', [LaporanController::class, 'show']);
     Route::post('laporan', [LaporanController::class, 'store']);
+    Route::post('laporan/export', [LaporanController::class, 'export']);
     Route::get('laporan/{id}/pdf', [LaporanController::class, 'downloadPdf']);
     Route::get('laporan/{id}/excel', [LaporanController::class, 'downloadExcel']);
 });
 
+// ROUTE ADMIN GUDANG
+Route::middleware(['jwt.cookie', 'auth:api'])->prefix('admin-gudang')->group(function () {
+    // +tambahBarang(): boolean - sesuai class diagram
+    Route::post('tambah-barang', [BarangController::class, 'store']);
+    
+    // +catatBarangMasuk(): boolean - sesuai class diagram
+    Route::post('catat-barang-masuk', [TransaksiMasukController::class, 'store']);
+    
+    // +catatBarangKeluar(): boolean - sesuai class diagram
+    Route::post('catat-barang-keluar', [TransaksiKeluarController::class, 'store']);
+    
+    // +kelolaUser(): boolean - sesuai class diagram
+    Route::get('kelola-user', [UserController::class, 'indexKelolaUser']);
+    Route::get('kelola-user/{id}', [UserController::class, 'showKelolaUser']);
+    Route::post('kelola-user', [UserController::class, 'storeKelolaUser']);
+    Route::put('kelola-user/{id}', [UserController::class, 'updateKelolaUser']);
+    Route::delete('kelola-user/{id}', [UserController::class, 'destroyKelolaUser']);
+    
+    // +buatLaporan(): Laporan - sesuai class diagram
+    Route::post('buat-laporan', [LaporanController::class, 'store']);
+});
+
+// ROUTE PETUGAS OPERASIONAL
+Route::middleware(['jwt.cookie', 'auth:api'])->prefix('petugas-operasional')->group(function () {
+    // +lihatStokBarang(): array - sesuai class diagram
+    Route::get('lihat-stok-barang', [BarangController::class, 'lihatStokBarang']);
+    
+    // +ajukanPermintaan(): boolean - sesuai class diagram
+    Route::post('ajukan-permintaan', [PermintaanBarangController::class, 'store']);
+    
+    // Method tambahan yang sudah ada
+    Route::post('menambahkan-transaksi', [TransaksiKeluarController::class, 'store']);
+    Route::post('menyelesaikan-permintaan', [PermintaanBarangController::class, 'selesaikanPermintaan']);
+});
+
+// ROUTE KEPALA DIVISI
+Route::middleware(['jwt.cookie', 'auth:api'])->prefix('kepala-divisi')->group(function () {
+    // +buatLaporan(): Laporan - sesuai class diagram
+    Route::post('buat-laporan', [LaporanController::class, 'buatLaporan']);
+    
+    // +cetakLaporan(): File - sesuai class diagram
+    Route::post('cetak-laporan', [LaporanController::class, 'cetakLaporan']);
+    Route::get('cetak-laporan/{id}', [LaporanController::class, 'cetakLaporan']);
+});
+
 // Route yang dilindungi (Opsional, untuk menguji token)
 Route::middleware(['jwt.cookie', 'auth:api'])->get('/user', function (Request $request) {
-    return $request->user();
+    $user = $request->user();
+    return response()->json([
+        'success' => true,
+        'user' => [
+            'id_user' => $user->id_user,
+            'username' => $user->username,
+            'nama_lengkap' => $user->nama_lengkap,
+            'role' => $user->role,
+            'is_active' => $user->is_active,
+        ]
+    ]);
 });

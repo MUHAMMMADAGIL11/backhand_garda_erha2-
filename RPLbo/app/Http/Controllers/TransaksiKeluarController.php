@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Transaksi;
@@ -40,7 +40,7 @@ class TransaksiKeluarController extends Controller
             $user = $request->user();
             
             // Hanya AdminGudang yang bisa mencatat transaksi keluar
-            if ($user->role !== 'AdminGudang') {
+            if (!$user->hasRole('AdminGudang')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Hanya Admin Gudang yang dapat mencatat transaksi keluar'
@@ -98,6 +98,65 @@ class TransaksiKeluarController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mencatat transaksi keluar',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // PUT /transaksi/keluar/{id} - Memperbarui status transaksi keluar
+    public function update(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+            
+            // Hanya AdminGudang yang bisa update transaksi
+            if (!$user->hasRole('AdminGudang')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hanya Admin Gudang yang dapat memperbarui transaksi keluar'
+                ], 403);
+            }
+
+            $transaksi = Transaksi::where('id_transaksi', $id)
+                ->where('jenis_transaksi', 'KELUAR')
+                ->first();
+
+            if (!$transaksi) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Transaksi keluar tidak ditemukan'
+                ], 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'status' => 'nullable|string',
+                'tujuan' => 'nullable|string|max:100',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasi gagal',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Update transaksi keluar detail jika ada
+            if ($request->has('tujuan') && $transaksi->transaksiKeluar) {
+                $transaksi->transaksiKeluar->update([
+                    'tujuan' => $request->tujuan
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Transaksi keluar berhasil diperbarui',
+                'data' => $transaksi->load(['user', 'barang.kategori', 'transaksiKeluar'])
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui transaksi keluar',
                 'error' => $e->getMessage()
             ], 500);
         }

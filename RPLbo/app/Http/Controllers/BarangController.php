@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Barang;
@@ -62,11 +62,34 @@ class BarangController extends Controller
         try {
             $user = $request->user();
             
-            // Hanya AdminGudang yang bisa menambah barang
-            if ($user->role !== 'AdminGudang') {
+            // Debug: Log user info
+            \Log::debug('User authenticated: ', [
+                'user_id' => $user ? $user->id_user : null,
+                'username' => $user ? $user->username : null,
+                'role' => $user ? $user->role : null,
+                'all_user_data' => $user ? $user->toArray() : null
+            ]);
+            
+            // Cek apakah user ter-authenticate
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Hanya Admin Gudang yang dapat menambah barang'
+                    'message' => 'User tidak ter-authenticate. Silakan login terlebih dahulu.'
+                ], 401);
+            }
+            
+            // Hanya AdminGudang yang bisa menambah barang
+            if (!$user->hasRole('AdminGudang')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hanya Admin Gudang yang dapat menambah barang',
+                    'debug' => [
+                        'current_role' => $user->role ?? 'NULL',
+                        'normalized_role' => \App\Models\User::normalizeRole($user->role),
+                        'expected_role' => 'AdminGudang',
+                        'user_id' => $user->id_user,
+                        'username' => $user->username
+                    ]
                 ], 403);
             }
 
@@ -115,7 +138,7 @@ class BarangController extends Controller
             $user = $request->user();
             
             // Hanya AdminGudang yang bisa mengedit barang
-            if ($user->role !== 'AdminGudang') {
+            if (!$user->hasRole('AdminGudang')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Hanya Admin Gudang yang dapat mengedit barang'
@@ -176,7 +199,7 @@ class BarangController extends Controller
             $user = $request->user();
             
             // Hanya AdminGudang yang bisa menghapus barang
-            if ($user->role !== 'AdminGudang') {
+            if (!$user->hasRole('AdminGudang')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Hanya Admin Gudang yang dapat menghapus barang'
@@ -214,7 +237,7 @@ class BarangController extends Controller
             $user = $request->user();
             
             // Hanya AdminGudang yang bisa update stok
-            if ($user->role !== 'AdminGudang') {
+            if (!$user->hasRole('AdminGudang')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Hanya Admin Gudang yang dapat mengupdate stok'
@@ -285,6 +308,38 @@ class BarangController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal mengecek stok minimum',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Method khusus untuk PetugasOperasional: lihatStokBarang() - sesuai class diagram
+    public function lihatStokBarang(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            // Hanya PetugasOperasional yang bisa melihat stok barang
+            if (!$user->hasRole('PetugasOperasional')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hanya Petugas Operasional yang dapat melihat stok barang'
+                ], 403);
+            }
+
+            $barang = Barang::with('kategori')
+                ->select('id_barang', 'kode_barang', 'nama_barang', 'stok', 'stok_minimum')
+                ->orderBy('nama_barang', 'asc')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $barang
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengambil data stok barang',
                 'error' => $e->getMessage()
             ], 500);
         }

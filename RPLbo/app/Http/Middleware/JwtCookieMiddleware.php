@@ -11,15 +11,18 @@ class JwtCookieMiddleware
      * Handle an incoming request.
      */
     public function handle(Request $request, Closure $next)
-    {
-        // Jika tidak ada Bearer Token di header, cek cookie
-        if (!$request->bearerToken()) {
-            $token = $request->cookie('access_token');
-            if ($token) {
-                $request->headers->set('Authorization', 'Bearer ' . $token);
-            }
+{
+    if (!$request->bearerToken()) {
+        $token = $request->cookie('token');
+        if ($token) {
+            $request->headers->set('Authorization', 'Bearer ' . $token);
+            \Log::debug('Token added to header: ' . $token); // Verifikasi token yang diteruskan
         }
-
-        return $next($request);
     }
+    \Log::debug('Authorization header: ' . $request->header('Authorization'));
+    return $next($request);
+}
+
+
+
 }

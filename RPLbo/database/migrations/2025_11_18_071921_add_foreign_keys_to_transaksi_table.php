@@ -13,7 +13,6 @@ return new class extends Migration
     {
         Schema::table('transaksi', function (Blueprint $table) {
             $table->foreign(['id_barang'], 'transaksi_id_barang_fkey')->references(['id_barang'])->on('barang')->onUpdate('no action')->onDelete('no action');
-            $table->foreign(['id_user'], 'transaksi_id_user_fkey')->references(['id_user'])->on('users')->onUpdate('no action')->onDelete('no action');
         });
     }
 
@@ -24,7 +23,6 @@ return new class extends Migration
     {
         Schema::table('transaksi', function (Blueprint $table) {
             $table->dropForeign('transaksi_id_barang_fkey');
-            $table->dropForeign('transaksi_id_user_fkey');
         });
     }
 };

@@ -11,6 +11,8 @@
 
 return [
 
+    'read_from_cookie' => true,
+
     /*
     |--------------------------------------------------------------------------
     | JWT Authentication Secret

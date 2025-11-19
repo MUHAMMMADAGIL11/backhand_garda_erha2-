@@ -11,8 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('logaktivitas', function (Blueprint $table) {
-            $table->foreign(['id_user'], 'logaktivitas_id_user_fkey')->references(['id_user'])->on('users')->onUpdate('no action')->onDelete('no action');
+        Schema::create('petugas_operasional', function (Blueprint $table) {
+            $table->increments('id_petugas_operasional');
+            $table->integer('id_user')->unique('petugas_operasional_id_user_key');
+            $table->string('divisi', 50);
         });
     }
 
@@ -21,8 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('logaktivitas', function (Blueprint $table) {
-            $table->dropForeign('logaktivitas_id_user_fkey');
-        });
+        Schema::dropIfExists('petugas_operasional');
     }
 };

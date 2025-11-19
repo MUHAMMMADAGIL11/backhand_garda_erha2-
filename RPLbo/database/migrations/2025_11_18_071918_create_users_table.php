@@ -15,10 +15,8 @@ return new class extends Migration
             $table->increments('id_user');
             $table->string('username', 50)->unique('users_username_key');
             $table->string('password');
-            $table->string('nama_lengkap');
-            $table->enum('role', ['AdminGudang', 'PetugasOperasional', 'KepalaDivisi']);
-            $table->boolean('is_aktif')->default(true);
-            $table->string('divisi', 100)->nullable();
+            $table->string('nama_lengkap')->nullable();
+            $table->boolean('is_active')->nullable()->default(true);
         });
     }
 

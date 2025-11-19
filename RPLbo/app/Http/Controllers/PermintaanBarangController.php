@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\PermintaanBarang;
@@ -19,7 +19,7 @@ class PermintaanBarangController extends Controller
             $query = PermintaanBarang::with(['user', 'barang.kategori']);
 
             // Petugas hanya melihat permintaan sendiri, Admin melihat semua
-            if ($user->role === 'PetugasOperasional') {
+            if ($user->hasRole('PetugasOperasional')) {
                 $query->where('id_user', $user->id_user);
             }
 
@@ -71,7 +71,7 @@ class PermintaanBarangController extends Controller
             $user = $request->user();
             
             // Hanya PetugasOperasional yang bisa mengajukan permintaan
-            if ($user->role !== 'PetugasOperasional') {
+            if (!$user->hasRole('PetugasOperasional')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Hanya Petugas Operasional yang dapat mengajukan permintaan'
@@ -119,7 +119,7 @@ class PermintaanBarangController extends Controller
             $user = $request->user();
             
             // Hanya AdminGudang yang bisa menyetujui
-            if ($user->role !== 'AdminGudang') {
+            if (!$user->hasRole('AdminGudang')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Hanya Admin Gudang yang dapat menyetujui permintaan'
@@ -177,7 +177,7 @@ class PermintaanBarangController extends Controller
             $user = $request->user();
             
             // Hanya AdminGudang yang bisa menolak
-            if ($user->role !== 'AdminGudang') {
+            if (!$user->hasRole('AdminGudang')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Hanya Admin Gudang yang dapat menolak permintaan'
@@ -211,6 +211,128 @@ class PermintaanBarangController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menolak permintaan',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // PUT /permintaan-barang/{id} - Memperbarui status permintaan barang
+    public function update(Request $request, $id)
+    {
+        try {
+            $user = $request->user();
+            
+            $permintaan = PermintaanBarang::find($id);
+
+            if (!$permintaan) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Permintaan tidak ditemukan'
+                ], 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'status' => 'required|in:Menunggu Persetujuan,Disetujui,Ditolak,Selesai',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasi gagal',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Hanya AdminGudang yang bisa mengubah status
+            if (!$user->hasRole('AdminGudang')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hanya Admin Gudang yang dapat memperbarui status permintaan'
+                ], 403);
+            }
+
+            $permintaan->update(['status' => $request->status]);
+
+            // Jika disetujui, kurangi stok
+            if ($request->status === 'Disetujui' && $permintaan->status !== 'Disetujui') {
+                if ($permintaan->barang->stok < $permintaan->jumlah_diminta) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Stok tidak mencukupi. Stok tersedia: ' . $permintaan->barang->stok
+                    ], 400);
+                }
+                $permintaan->barang->decrement('stok', $permintaan->jumlah_diminta);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Status permintaan berhasil diperbarui',
+                'data' => $permintaan->load(['user', 'barang.kategori'])
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal memperbarui permintaan',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // POST /petugas-operasional/menyelesaikan-permintaan - Menyelesaikan permintaan barang
+    public function selesaikanPermintaan(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            // Hanya PetugasOperasional yang bisa menyelesaikan permintaan
+            if (!$user->hasRole('PetugasOperasional')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hanya Petugas Operasional yang dapat menyelesaikan permintaan'
+                ], 403);
+            }
+
+            $validator = Validator::make($request->all(), [
+                'id_permintaan' => 'required|integer|exists:permintaan_barang,id_permintaan',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasi gagal',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $permintaan = PermintaanBarang::find($request->id_permintaan);
+
+            if (!$permintaan) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Permintaan tidak ditemukan'
+                ], 404);
+            }
+
+            // Hanya bisa menyelesaikan permintaan yang sudah disetujui
+            if ($permintaan->status !== 'Disetujui') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hanya permintaan yang sudah disetujui yang dapat diselesaikan'
+                ], 400);
+            }
+
+            // Update status menjadi selesai
+            $permintaan->update(['status' => 'Selesai']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Permintaan berhasil diselesaikan',
+                'data' => $permintaan->load(['user', 'barang.kategori'])
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyelesaikan permintaan',
                 'error' => $e->getMessage()
             ], 500);
         }
